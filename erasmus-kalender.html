@@ -133,6 +133,12 @@
   }
   .modes button.active { background: linear-gradient(135deg, var(--sea), var(--sky)); color: #fff;
     box-shadow: 0 4px 12px rgba(17,122,147,.3); }
+  .tb-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lockbtn { border: 1px solid var(--line); background: var(--card); color: var(--muted);
+    padding: 9px 16px; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: .85rem;
+    font-family: inherit; box-shadow: var(--shadow-sm); transition: .15s; }
+  .lockbtn:hover { border-color: var(--sea); color: var(--sea-deep); }
+  .lockbtn.unlocked { background: #e9f6ee; border-color: #bfe3cb; color: var(--green-ink); }
 
   .month-nav { display: flex; align-items: center; gap: 10px; }
   .month-nav button {
@@ -370,6 +376,10 @@ const firebaseConfig = {
 
 const isConfigured = !firebaseConfig.apiKey.startsWith("DEIN_");
 
+/* 🔒 Maurice-PIN: schützt "Tage sperren" und "Meine Termine".
+   Ändere die Zahl unten in deine eigene geheime PIN (z. B. "4711"). */
+const MAURICE_PIN = "180802";
+
 // --- Zeitraum & Texte ---
 const START = new Date(2026, 8, 1);
 const END   = new Date(2027, 0, 15);
@@ -531,6 +541,9 @@ function App() {
   const [error, setError] = useState("");
   const [evError, setEvError] = useState("");
   const [layers, setLayers] = useState({ weekend: true, holiday: true, ferien: true, events: true });
+  const [unlocked, setUnlocked] = useState(() => {
+    try { return localStorage.getItem("maurice-unlocked") === "1"; } catch (e) { return false; }
+  });
   const formRef = useRef(null);
   const nameRef = useRef(null);
 
@@ -611,7 +624,7 @@ function App() {
   const handleDayClick = (d) => {
     if (!inRange(d)) return;
     const key = iso(d);
-    if (mode === "edit") { toggleDay(key); return; }
+    if (mode === "edit") { if (unlocked) toggleDay(key); return; }
     setForm(f => {
       if (!f.from || (f.from && f.to)) return { ...f, from: key, to: "" };
       if (key < f.from) return { ...f, from: key, to: "" };
@@ -657,6 +670,19 @@ function App() {
 
   const removeEvent = (id) => {
     if (confirm("Diesen Termin wirklich löschen?")) db.ref("events/" + id).remove();
+  };
+
+  const unlock = () => {
+    const pin = window.prompt("🔒 PIN eingeben (nur für Maurice):");
+    if (pin === null) return;
+    if (pin === MAURICE_PIN) {
+      setUnlocked(true);
+      try { localStorage.setItem("maurice-unlocked", "1"); } catch (e) {}
+    } else window.alert("Falsche PIN.");
+  };
+  const lock = () => {
+    setUnlocked(false); setMode("view");
+    try { localStorage.removeItem("maurice-unlocked"); } catch (e) {}
   };
 
   // Live-Feedback fürs Formular
@@ -727,9 +753,14 @@ function App() {
         </div>
 
         <div className="toolbar">
-          <div className="modes">
-            <button className={mode==="view"?"active":""} onClick={() => setMode("view")}>👁 Ansehen</button>
-            <button className={mode==="edit"?"active":""} onClick={() => setMode("edit")}>🚫 Tage sperren</button>
+          <div className="tb-left">
+            <div className="modes">
+              <button className={mode==="view"?"active":""} onClick={() => setMode("view")}>👁 Ansehen</button>
+              {unlocked && <button className={mode==="edit"?"active":""} onClick={() => setMode("edit")}>🚫 Tage sperren</button>}
+            </div>
+            {unlocked
+              ? <button className="lockbtn unlocked" onClick={lock}>🔓 Maurice · abmelden</button>
+              : <button className="lockbtn" onClick={unlock}>🔒 Maurice-Login</button>}
           </div>
           <div className="month-nav">
             <button onClick={() => shift(-1)} disabled={!canPrev} aria-label="Vorheriger Monat">‹</button>
@@ -871,9 +902,10 @@ function App() {
         </section>
 
         <section className="block">
-          <h2>📌 Meine Termine & Sperrtage</h2>
-          <div className="section-note">Nur für Maurice: wichtige Termine (Klausur, Marathon …) eintragen. Mit Häkchen sperrst du Tage für Besuche.</div>
-          <div className="card">
+          <h2>📌 Maurices Termine & Sperrtage</h2>
+          {!unlocked && <div className="section-note">🔒 Diese Termine pflegt Maurice{events.length === 0 ? " – aktuell sind keine Sperrtage eingetragen." : "."}</div>}
+          {unlocked && <div className="section-note">Nur für Maurice: wichtige Termine (Klausur, Marathon …) eintragen. Mit Häkchen sperrst du Tage für Besuche.</div>}
+          {unlocked && <div className="card">
             <form className="event-form" onSubmit={addEvent}>
               <div className="ef-row">
                 <div className="full">
@@ -902,7 +934,7 @@ function App() {
               </div>
             </form>
             {evError && <div className="form-error">⚠️ {evError}</div>}
-          </div>
+          </div>}
           {events.length > 0 && (
             <ul className="visit-list" style={{marginTop: "12px"}}>
               {events.map(ev => (
@@ -911,7 +943,7 @@ function App() {
                   <span className="vi-dates">{fmtDE(ev.from)} – {fmtDE(ev.to)}</span>
                   {ev.blocks && <span className="vi-meta" style={{background:"#e7ecee", color:"#445"}}>Besuch gesperrt</span>}
                   <span className="vi-spacer"></span>
-                  <button className="del" title="Termin löschen" onClick={() => removeEvent(ev.id)}>🗑</button>
+                  {unlocked && <button className="del" title="Termin löschen" onClick={() => removeEvent(ev.id)}>🗑</button>}
                 </li>
               ))}
             </ul>
