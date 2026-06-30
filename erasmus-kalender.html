@@ -27,6 +27,11 @@
     --terra: #bb6a4d;
     --gold: #c2993e;
     --blocked: #9a917d;
+    --fly-out: #1f5d8c;
+    --fly-ret: #5a93c4;
+    --visit: #3c9a5f;
+    --ev-info: #7a5aa6;
+    --ev-block: #c0392b;
     --shadow: 0 1px 2px rgba(20,30,32,.03), 0 18px 40px -24px rgba(14,60,72,.28);
     --shadow-sm: 0 1px 2px rgba(20,30,32,.05);
     --r: 14px;
@@ -138,7 +143,7 @@
   .cell.clickable { cursor: pointer; }
   .cell.clickable:hover { border-color: var(--sea); }
   .cell.weekend { background: #faf4e9; }
-  .cell.has-visitor { border-color: #e0cdbe; }
+  .cell.has-visitor { border-color: #b6ddc3; }
   .cell.sel { box-shadow: inset 0 0 0 1.5px var(--sea); border-color: var(--sea); }
   .cell.blocked { background: repeating-linear-gradient(45deg, #f0ece1, #f0ece1 6px, #e7e0d0 6px, #e7e0d0 12px);
     border-color: #ddd4c1; }
@@ -156,33 +161,34 @@
   .flights { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
   .fchip { font-size: .55rem; font-weight: 600; border-radius: 4px; padding: 1px 4px; line-height: 1.5;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; letter-spacing: .02em; }
-  .fchip.out { background: var(--sea-deep); }
-  .fchip.ret { background: var(--terra); }
+  .fchip.out { background: var(--fly-out); }
+  .fchip.ret { background: var(--fly-ret); }
   .fchip .arr { display: none; }
 
   .vtags { display: flex; flex-direction: column; gap: 2px; margin-top: auto; }
   .vtag { color: #fff; font-size: .58rem; font-weight: 600; border-radius: 4px; padding: 1px 5px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.45; }
-  .vtag.anon { background: var(--blocked); }
+  .vtag.anon { background: var(--visit); }
   .vmore { font-size: .56rem; color: var(--muted); font-weight: 600; padding-left: 2px; }
   .etag { color: #fff; font-size: .56rem; font-weight: 600; border-radius: 4px; padding: 1px 5px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.45; }
-  .etag.block { background: #5c6a72; }
-  .etag.info { background: var(--sea); }
+  .etag.block { background: var(--ev-block); }
+  .etag.info { background: var(--ev-info); }
 
   .legend { display: flex; flex-wrap: wrap; gap: 14px 18px; margin: 20px 2px 2px; font-size: .76rem;
     color: var(--muted); font-weight: 500; align-items: center; }
   .legend span { display: inline-flex; align-items: center; gap: 7px; }
   .sw { width: 13px; height: 13px; border-radius: 4px; border: 1px solid var(--line); position: relative; }
-  .sw.visitors { background: var(--blocked); border: 0; }
+  .sw.visitors { background: var(--visit); border: 0; }
+  .sw.termin { background: var(--ev-info); border: 0; }
   .sw.today { border: 0; background: transparent; }
   .sw.today::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
     width: 6px; height: 6px; border-radius: 50%; background: var(--terra); }
   .sw.weekend { background: #faf4e9; border-color: #ecdfca; }
   .sw.ferien { background: var(--gold); border: 0; }
-  .sw.fout { background: var(--sea-deep); border: 0; }
-  .sw.fret { background: var(--terra); border: 0; }
-  .sw.blocked { background: repeating-linear-gradient(45deg, #f0ece1, #f0ece1 3px, #ddd4c1 3px, #ddd4c1 6px); border-color: #ddd4c1; }
+  .sw.fout { background: var(--fly-out); border: 0; }
+  .sw.fret { background: var(--fly-ret); border: 0; }
+  .sw.blocked { background: var(--ev-block); border: 0; }
 
   section.block { margin-top: 40px; }
   section.block h2 { font-family: "Fraunces", serif; font-size: 1.35rem; font-weight: 500; margin: 0 0 4px; }
@@ -315,7 +321,7 @@ const FERIEN = [
   { name: "Weihnachtsferien Saarland", from: "2026-12-21", to: "2026-12-31" }
 ];
 
-const PALETTE = ["#bb6a4d","#15677a","#3f7d54","#b08a2e","#7a5aa6","#b85877","#4f7a8c","#9a6a3a"];
+const PALETTE = ["#c96a4a","#d39a2e","#9c5fa6","#bf5a86","#7a6a4a","#4f8a6a","#a4632e","#5a7d8a"];
 const hashName = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
 const colorFor = (name) => PALETTE[hashName((name||"").trim().toLowerCase()) % PALETTE.length];
 
@@ -733,6 +739,7 @@ function App() {
             {layers.flights && <span><i className="sw fout"></i> Hinflug → Santander</span>}
             {layers.flights && <span><i className="sw fret"></i> Rückflug → Charleroi</span>}
             <span><i className="sw visitors"></i> Besuch</span>
+            {layers.events && <span><i className="sw termin"></i> Termin</span>}
             <span><i className="sw blocked"></i> gesperrt</span>
             <span><i className="sw today"></i> heute</span>
             {layers.weekend && <span><i className="sw weekend"></i> Wochenende</span>}
@@ -814,10 +821,10 @@ function App() {
           {events.length > 0 && (
             <ul className="visit-list" style={{marginTop: "14px"}}>
               {events.map(ev => (
-                <li key={ev.id} className="visit-item" style={{borderLeftColor: ev.blocks ? "#5c6a72" : "var(--sea)"}}>
-                  <span className="vi-name">{ev.title}</span>
+                <li key={ev.id} className="visit-item" style={{borderLeftColor: ev.blocks ? "var(--ev-block)" : "var(--ev-info)"}}>
+                  <span className="vi-name" style={{color: ev.blocks ? "var(--ev-block)" : "var(--ev-info)"}}>{ev.title}</span>
                   <span className="vi-dates">{fmtDE(ev.from)} – {fmtDE(ev.to)}</span>
-                  {ev.blocks && <span className="vi-meta" style={{background:"#eceae4", color:"#5c5648"}}>gesperrt</span>}
+                  {ev.blocks && <span className="vi-meta" style={{background:"#f6e0db", color:"var(--ev-block)"}}>gesperrt</span>}
                   <span className="vi-spacer"></span>
                   {unlocked && <button className="del" title="Löschen" onClick={() => removeEvent(ev.id)}>×</button>}
                 </li>
